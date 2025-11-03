@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão Pessoal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Sistema de Gestão Pessoal</h1>
+        
+        <!-- Navegação por Tabs -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="mostrarTab('anotacoes')">📝 Anotações</button>
+            <button class="tab-button" onclick="mostrarTab('lembretes')">🔔 Lembretes</button>
+            <button class="tab-button" onclick="mostrarTab('contas')">💳 Contas</button>
+            <button class="tab-button" onclick="mostrarTab('despesas')">💰 Despesas</button>
+            <button class="tab-button" onclick="mostrarTab('diarios')">📖 Diário</button>
+        </div>
+
+        <!-- Container de Anotações -->
+        <div class="tab-content active" id="anotacoes">
+            <div class="section-wrapper">
+                <div class="section">
+                    <h2>📝 Anotações</h2>
+                    <form id="formAnotacao" class="form">
+                        <input type="text" id="tituloAnotacao" placeholder="Título da anotação" required>
+                        <textarea id="conteudoAnotacao" placeholder="Escreva sua anotação aqui..." required></textarea>
+                        <button type="submit">Adicionar Anotação</button>
+                    </form>
+                    <div id="listaAnotacoes" class="lista"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container de Lembretes -->
+        <div class="tab-content" id="lembretes">
+            <div class="section-wrapper">
+                <div class="section">
+                    <h2>🔔 Lembretes</h2>
+                    <form id="formLembrete" class="form">
+                        <textarea id="descricaoLembrete" placeholder="Digite seu lembrete aqui..." required></textarea>
+                        <button type="submit">Adicionar Lembrete</button>
+                    </form>
+                    <div id="listaLembretes" class="lista"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container de Contas -->
+        <div class="tab-content" id="contas">
+            <div class="section-wrapper">
+                <div class="section full-width">
+                    <h2>💳 Gestão de Contas</h2>
+                    <form id="formConta" class="form">
+                        <div class="form-row">
+                            <input type="text" id="instituicaoConta" placeholder="Instituição Bancária" required>
+                            <select id="tipoConta" required>
+                                <option value="">Tipo de Conta</option>
+                                <option value="Conta Corrente">Conta Corrente</option>
+                                <option value="Conta Poupança">Conta Poupança</option>
+                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                <option value="Carteira">Carteira</option>
+                                <option value="Investimento">Investimento</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <input type="text" id="numeroConta" placeholder="Número da Conta (opcional)">
+                            <input type="number" step="0.01" id="saldoConta" placeholder="Saldo Inicial" value="0.00">
+                        </div>
+                        <textarea id="descricaoConta" placeholder="Descrição adicional (opcional)"></textarea>
+                        <button type="submit">Adicionar Conta</button>
+                    </form>
+                    <div id="listaContas" class="lista"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container de Despesas -->
+        <div class="tab-content" id="despesas">
+            <div class="section-wrapper">
+                <div class="section full-width">
+                    <h2>💰 Gestão de Despesas</h2>
+                    <form id="formDespesa" class="form">
+                        <div class="form-row">
+                            <input type="text" id="descricaoDespesa" placeholder="Descrição da despesa" required>
+                            <input type="number" step="0.01" id="valorDespesa" placeholder="Valor (R$)" required>
+                        </div>
+                        <div class="form-row">
+                            <select id="categoriaDespesa" required>
+                                <option value="">Categoria</option>
+                                <option value="Alimentação">Alimentação</option>
+                                <option value="Transporte">Transporte</option>
+                                <option value="Moradia">Moradia</option>
+                                <option value="Saúde">Saúde</option>
+                                <option value="Educação">Educação</option>
+                                <option value="Lazer">Lazer</option>
+                                <option value="Compras">Compras</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                            <select id="contaDespesa">
+                                <option value="">Conta (opcional)</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <input type="date" id="dataVencimento" placeholder="Data de Vencimento">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="pagoDespesa">
+                                <span>Pagamento Realizado</span>
+                            </label>
+                        </div>
+                        <textarea id="observacoesDespesa" placeholder="Observações (opcional)"></textarea>
+                        <button type="submit">Adicionar Despesa</button>
+                    </form>
+                    
+                    <!-- Estatísticas -->
+                    <div class="stats-container">
+                        <h3>📊 Estatísticas por Categoria</h3>
+                        <div id="estatisticasDespesas" class="stats-grid"></div>
+                    </div>
+                    
+                    <div id="listaDespesas" class="lista"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container de Diários -->
+        <div class="tab-content" id="diarios">
+            <div class="section-wrapper">
+                <div class="section full-width">
+                    <h2>📖 Diário Pessoal</h2>
+                    <form id="formDiario" class="form">
+                        <input type="text" id="tituloDiario" placeholder="Título da entrada" required>
+                        <div class="form-row">
+                            <input type="date" id="dataDiario" required>
+                            <select id="humorDiario">
+                                <option value="">Humor</option>
+                                <option value="😊">😊 Feliz</option>
+                                <option value="😢">😢 Triste</option>
+                                <option value="😴">😴 Sonolento</option>
+                                <option value="😤">😤 Irritado</option>
+                                <option value="😎">😎 Confiante</option>
+                                <option value="🤔">🤔 Pensativo</option>
+                                <option value="😍">😍 Apaixonado</option>
+                                <option value="🎉">🎉 Comemorando</option>
+                            </select>
+                        </div>
+                        <input type="text" id="tagDiario" placeholder="Tag (ex: #trabalho, #pessoal)">
+                        <textarea id="conteudoDiario" placeholder="Como foi seu dia?..." required></textarea>
+                        <button type="submit">Adicionar Entrada</button>
+                    </form>
+                    <div id="listaDiarios" class="lista"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
