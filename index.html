@@ -5,28 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestão Pessoal</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+    <!-- Cabeçalho -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title"><i class="fas fa-chart-line"></i> Sistema de Gestão Pessoal</h1>
+            <button class="darkmode-toggle" id="darkmodeToggle" onclick="toggleDarkMode()">
+                <i class="fas" id="darkmodeIcon"></i>
+            </button>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link active"><i class="fas fa-home"></i> Início</a>
+            <a href="relatorios.html" class="nav-link"><i class="fas fa-file-alt"></i> Relatórios</a>
+            <a href="graficos.html" class="nav-link"><i class="fas fa-chart-bar"></i> Gráficos</a>
+        </nav>
+    </header>
+
     <div class="container">
-        <h1>📊 Sistema de Gestão Pessoal</h1>
-        
         <!-- Navegação por Tabs -->
         <div class="tabs">
-            <button class="tab-button active" onclick="mostrarTab('anotacoes')">📝 Anotações</button>
-            <button class="tab-button" onclick="mostrarTab('lembretes')">🔔 Lembretes</button>
-            <button class="tab-button" onclick="mostrarTab('contas')">💳 Contas</button>
-            <button class="tab-button" onclick="mostrarTab('despesas')">💰 Despesas</button>
-            <button class="tab-button" onclick="mostrarTab('diarios')">📖 Diário</button>
+            <button class="tab-button active" onclick="mostrarTab('anotacoes')"><i class="fas fa-sticky-note"></i> Anotações</button>
+            <button class="tab-button" onclick="mostrarTab('lembretes')"><i class="fas fa-bell"></i> Lembretes</button>
+            <button class="tab-button" onclick="mostrarTab('contas')"><i class="fas fa-credit-card"></i> Contas</button>
+            <button class="tab-button" onclick="mostrarTab('despesas')"><i class="fas fa-wallet"></i> Despesas</button>
+            <button class="tab-button" onclick="mostrarTab('diarios')"><i class="fas fa-book"></i> Diário</button>
         </div>
 
         <!-- Container de Anotações -->
         <div class="tab-content active" id="anotacoes">
             <div class="section-wrapper">
                 <div class="section">
-                    <h2>📝 Anotações</h2>
-                    <form id="formAnotacao" class="form">
+                    <h2><i class="fas fa-sticky-note"></i> Anotações</h2>
+                    <form id="formAnotacao" class="form" enctype="multipart/form-data">
                         <input type="text" id="tituloAnotacao" placeholder="Título da anotação" required>
                         <textarea id="conteudoAnotacao" placeholder="Escreva sua anotação aqui..." required></textarea>
+                        <input type="file" id="fotoAnotacao" accept="image/*" class="file-input">
+                        <label for="fotoAnotacao" class="file-label"><i class="fas fa-camera"></i> Adicionar Foto (opcional)</label>
+                        <div id="previewAnotacao" class="image-preview"></div>
                         <button type="submit">Adicionar Anotação</button>
                     </form>
                     <div id="listaAnotacoes" class="lista"></div>
@@ -38,7 +57,7 @@
         <div class="tab-content" id="lembretes">
             <div class="section-wrapper">
                 <div class="section">
-                    <h2>🔔 Lembretes</h2>
+                    <h2><i class="fas fa-bell"></i> Lembretes</h2>
                     <form id="formLembrete" class="form">
                         <textarea id="descricaoLembrete" placeholder="Digite seu lembrete aqui..." required></textarea>
                         <button type="submit">Adicionar Lembrete</button>
@@ -52,7 +71,7 @@
         <div class="tab-content" id="contas">
             <div class="section-wrapper">
                 <div class="section full-width">
-                    <h2>💳 Gestão de Contas</h2>
+                    <h2><i class="fas fa-credit-card"></i> Gestão de Contas</h2>
                     <form id="formConta" class="form">
                         <div class="form-row">
                             <input type="text" id="instituicaoConta" placeholder="Instituição Bancária" required>
@@ -81,7 +100,7 @@
         <div class="tab-content" id="despesas">
             <div class="section-wrapper">
                 <div class="section full-width">
-                    <h2>💰 Gestão de Despesas</h2>
+                    <h2><i class="fas fa-wallet"></i> Gestão de Despesas</h2>
                     <form id="formDespesa" class="form">
                         <div class="form-row">
                             <input type="text" id="descricaoDespesa" placeholder="Descrição da despesa" required>
@@ -111,12 +130,15 @@
                             </label>
                         </div>
                         <textarea id="observacoesDespesa" placeholder="Observações (opcional)"></textarea>
+                        <input type="file" id="fotoDespesa" accept="image/*" class="file-input">
+                        <label for="fotoDespesa" class="file-label"><i class="fas fa-camera"></i> Adicionar Foto (opcional)</label>
+                        <div id="previewDespesa" class="image-preview"></div>
                         <button type="submit">Adicionar Despesa</button>
                     </form>
                     
                     <!-- Estatísticas -->
                     <div class="stats-container">
-                        <h3>📊 Estatísticas por Categoria</h3>
+                        <h3><i class="fas fa-chart-pie"></i> Estatísticas por Categoria</h3>
                         <div id="estatisticasDespesas" class="stats-grid"></div>
                     </div>
                     
@@ -129,25 +151,28 @@
         <div class="tab-content" id="diarios">
             <div class="section-wrapper">
                 <div class="section full-width">
-                    <h2>📖 Diário Pessoal</h2>
+                    <h2><i class="fas fa-book"></i> Diário Pessoal</h2>
                     <form id="formDiario" class="form">
                         <input type="text" id="tituloDiario" placeholder="Título da entrada" required>
                         <div class="form-row">
                             <input type="date" id="dataDiario" required>
                             <select id="humorDiario">
                                 <option value="">Humor</option>
-                                <option value="😊">😊 Feliz</option>
-                                <option value="😢">😢 Triste</option>
-                                <option value="😴">😴 Sonolento</option>
-                                <option value="😤">😤 Irritado</option>
-                                <option value="😎">😎 Confiante</option>
-                                <option value="🤔">🤔 Pensativo</option>
-                                <option value="😍">😍 Apaixonado</option>
-                                <option value="🎉">🎉 Comemorando</option>
+                                <option value="happy"><i class="fas fa-smile"></i> Feliz</option>
+                                <option value="sad"><i class="fas fa-frown"></i> Triste</option>
+                                <option value="sleepy"><i class="fas fa-bed"></i> Sonolento</option>
+                                <option value="angry"><i class="fas fa-angry"></i> Irritado</option>
+                                <option value="confident"><i class="fas fa-smile-beam"></i> Confiante</option>
+                                <option value="thinking"><i class="fas fa-meh"></i> Pensativo</option>
+                                <option value="love"><i class="fas fa-heart"></i> Apaixonado</option>
+                                <option value="celebrate"><i class="fas fa-party-horn"></i> Comemorando</option>
                             </select>
                         </div>
                         <input type="text" id="tagDiario" placeholder="Tag (ex: #trabalho, #pessoal)">
                         <textarea id="conteudoDiario" placeholder="Como foi seu dia?..." required></textarea>
+                        <input type="file" id="fotoDiario" accept="image/*" class="file-input">
+                        <label for="fotoDiario" class="file-label"><i class="fas fa-camera"></i> Adicionar Foto (opcional)</label>
+                        <div id="previewDiario" class="image-preview"></div>
                         <button type="submit">Adicionar Entrada</button>
                     </form>
                     <div id="listaDiarios" class="lista"></div>
@@ -155,6 +180,21 @@
             </div>
         </div>
     </div>
+    
+    <!-- Rodapé -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p class="footer-text">Desenvolvido</i> por <strong>Thais Santos</strong></p>
+            <div class="social-links">
+                <a href="https://github.com/thaissantosalves" target="_blank" class="social-link" title="GitHub">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="https://www.linkedin.com/in/thaissantos-alves/" target="_blank" class="social-link" title="LinkedIn">
+                    <i class="fab fa-linkedin"></i> LinkedIn
+                </a>
+            </div>
+        </div>
+    </footer>
     
     <script src="script.js"></script>
 </body>

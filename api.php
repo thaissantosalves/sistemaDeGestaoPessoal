@@ -9,6 +9,33 @@ try {
     exit;
 }
 
+// Criar diretório de uploads se não existir
+if (!file_exists('uploads')) {
+    mkdir('uploads', 0777, true);
+}
+
+function uploadFoto($file, $prefixo = '') {
+    if (!isset($file) || $file['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+    
+    $extensoesPermitidas = ['jpg', 'jpeg', 'png', 'gif'];
+    $extensao = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    
+    if (!in_array($extensao, $extensoesPermitidas)) {
+        return null;
+    }
+    
+    $nomeArquivo = $prefixo . '_' . time() . '_' . uniqid() . '.' . $extensao;
+    $caminho = 'uploads/' . $nomeArquivo;
+    
+    if (move_uploaded_file($file['tmp_name'], $caminho)) {
+        return $nomeArquivo;
+    }
+    
+    return null;
+}
+
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
 
 switch($acao) {
@@ -27,9 +54,14 @@ switch($acao) {
         try {
             $titulo = $_POST['titulo'] ?? '';
             $conteudo = $_POST['conteudo'] ?? '';
+            $foto = null;
             
-            $stmt = $pdo->prepare("INSERT INTO anotacoes (titulo, conteudo) VALUES (?, ?)");
-            $stmt->execute([$titulo, $conteudo]);
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $foto = uploadFoto($_FILES['foto'], 'anotacao');
+            }
+            
+            $stmt = $pdo->prepare("INSERT INTO anotacoes (titulo, conteudo, foto) VALUES (?, ?, ?)");
+            $stmt->execute([$titulo, $conteudo, $foto]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -180,9 +212,14 @@ switch($acao) {
             $data_vencimento = $_POST['data_vencimento'] ?? null;
             $pago = $_POST['pago'] ?? 0;
             $observacoes = $_POST['observacoes'] ?? '';
+            $foto = null;
             
-            $stmt = $pdo->prepare("INSERT INTO despesas (descricao, valor, categoria, conta_id, data_vencimento, pago, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes]);
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $foto = uploadFoto($_FILES['foto'], 'despesa');
+            }
+            
+            $stmt = $pdo->prepare("INSERT INTO despesas (descricao, valor, categoria, conta_id, data_vencimento, pago, observacoes, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $foto]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -255,9 +292,14 @@ switch($acao) {
             $humor = $_POST['humor'] ?? '';
             $tag = $_POST['tag'] ?? '';
             $data_diario = $_POST['data_diario'] ?? date('Y-m-d');
+            $foto = null;
             
-            $stmt = $pdo->prepare("INSERT INTO diarios (titulo, conteudo, humor, tag, data_diario) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario]);
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $foto = uploadFoto($_FILES['foto'], 'diario');
+            }
+            
+            $stmt = $pdo->prepare("INSERT INTO diarios (titulo, conteudo, humor, tag, data_diario, foto) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario, $foto]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {

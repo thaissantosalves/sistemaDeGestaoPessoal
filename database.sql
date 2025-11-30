@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS anotacoes (
     titulo VARCHAR(255) NOT NULL,
     conteudo TEXT NOT NULL,
     categoria VARCHAR(50) DEFAULT 'Geral',
+    foto VARCHAR(255) DEFAULT NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS despesas (
     data_vencimento DATE,
     pago TINYINT(1) DEFAULT 0,
     observacoes TEXT,
+    foto VARCHAR(255) DEFAULT NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (conta_id) REFERENCES contas(id) ON DELETE SET NULL
 );
@@ -51,6 +53,7 @@ CREATE TABLE IF NOT EXISTS diarios (
     conteudo TEXT NOT NULL,
     humor VARCHAR(20),
     tag VARCHAR(50),
+    foto VARCHAR(255) DEFAULT NULL,
     data_diario DATE NOT NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

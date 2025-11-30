@@ -2,7 +2,7 @@
 // Configuração de conexão com o banco de dados
 
 $host = 'localhost';
-$port = '3307'; // Altere para 3307 se for o caso
+$port = '3306';
 $dbname = 'diario_db';
 $username = 'root';
 $password = '';

@@ -3,18 +3,77 @@ let contaEditandoId = null;
 
 // Carregar dados ao iniciar
 document.addEventListener('DOMContentLoaded', function() {
-    carregarTodosDados();
+    // Inicializar darkmode
+    initDarkMode();
     
-    // Event listeners para formulários
-    document.getElementById('formAnotacao').addEventListener('submit', adicionarAnotacao);
-    document.getElementById('formLembrete').addEventListener('submit', adicionarLembrete);
-    document.getElementById('formConta').addEventListener('submit', adicionarConta);
-    document.getElementById('formDespesa').addEventListener('submit', adicionarDespesa);
-    document.getElementById('formDiario').addEventListener('submit', adicionarDiario);
-    
-    // Set data padrão para diário
-    document.getElementById('dataDiario').valueAsDate = new Date();
+    // Carregar dados apenas se estiver na página principal
+    if (document.getElementById('formAnotacao')) {
+        carregarTodosDados();
+        
+        // Event listeners para formulários
+        document.getElementById('formAnotacao').addEventListener('submit', adicionarAnotacao);
+        document.getElementById('formLembrete').addEventListener('submit', adicionarLembrete);
+        document.getElementById('formConta').addEventListener('submit', adicionarConta);
+        document.getElementById('formDespesa').addEventListener('submit', adicionarDespesa);
+        document.getElementById('formDiario').addEventListener('submit', adicionarDiario);
+        
+        // Set data padrão para diário
+        document.getElementById('dataDiario').valueAsDate = new Date();
+        
+        // Preview de imagens
+        setupImagePreview('fotoAnotacao', 'previewAnotacao');
+        setupImagePreview('fotoDespesa', 'previewDespesa');
+        setupImagePreview('fotoDiario', 'previewDiario');
+    }
 });
+
+// ========== DARK MODE ==========
+
+function initDarkMode() {
+    const darkMode = localStorage.getItem('darkMode') === 'true';
+    if (darkMode) {
+        document.body.classList.add('dark-mode');
+        updateDarkModeIcon();
+    }
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    updateDarkModeIcon();
+}
+
+function updateDarkModeIcon() {
+    const icon = document.getElementById('darkmodeIcon');
+    if (icon) {
+        icon.className = document.body.classList.contains('dark-mode') ? 'fas fa-sun' : 'fas fa-moon';
+    }
+}
+
+// ========== IMAGE PREVIEW ==========
+
+function setupImagePreview(inputId, previewId) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    
+    if (input && preview) {
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    preview.classList.add('active');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.classList.remove('active');
+                preview.innerHTML = '';
+            }
+        });
+    }
+}
 
 // ========== SISTEMA DE TABS ==========
 
@@ -77,14 +136,15 @@ function carregarAnotacoes() {
                 <div class="card anotacao-card">
                     <div class="card-header">
                         <h3>${item.titulo}</h3>
-                        <span class="icon-anotacao">📝</span>
+                        <span class="icon-anotacao"><i class="fas fa-sticky-note"></i></span>
                     </div>
                     <div class="card-body">
                         <p>${item.conteudo}</p>
+                        ${item.foto ? `<img src="uploads/${item.foto}" alt="Foto" style="max-width: 100%; border-radius: 8px; margin-top: 15px;">` : ''}
                     </div>
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
-                        <button onclick="deletarAnotacao(${item.id})">🗑️ Excluir</button>
+                        <button onclick="deletarAnotacao(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
                     </div>
                 </div>
             `).join('');
@@ -100,13 +160,20 @@ function adicionarAnotacao(e) {
     
     const titulo = document.getElementById('tituloAnotacao').value;
     const conteudo = document.getElementById('conteudoAnotacao').value;
+    const fotoInput = document.getElementById('fotoAnotacao');
+    const foto = fotoInput.files[0];
+    
+    const formData = new FormData();
+    formData.append('acao', 'adicionar_anotacao');
+    formData.append('titulo', titulo);
+    formData.append('conteudo', conteudo);
+    if (foto) {
+        formData.append('foto', foto);
+    }
     
     fetch('api.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=adicionar_anotacao&titulo=${encodeURIComponent(titulo)}&conteudo=${encodeURIComponent(conteudo)}`
+        body: formData
     })
         .then(response => {
             if (!response.ok) {
@@ -117,6 +184,8 @@ function adicionarAnotacao(e) {
         .then(data => {
             if (data.success) {
                 document.getElementById('formAnotacao').reset();
+                document.getElementById('previewAnotacao').classList.remove('active');
+                document.getElementById('previewAnotacao').innerHTML = '';
                 carregarAnotacoes();
             } else {
                 alert('Erro ao adicionar anotação: ' + (data.error || 'Erro desconhecido'));
@@ -172,11 +241,11 @@ function carregarLembretes() {
                                    onchange="toggleLembrete(${item.id})">
                             <label for="lembrete_${item.id}">${item.descricao}</label>
                         </div>
-                        <span class="icon-lembrete">🔔</span>
+                        <span class="icon-lembrete"><i class="fas fa-bell"></i></span>
                     </div>
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
-                        <button onclick="deletarLembrete(${item.id})">🗑️ Excluir</button>
+                        <button onclick="deletarLembrete(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
                     </div>
                 </div>
             `).join('');
@@ -278,7 +347,7 @@ function carregarContas() {
                             <h3>${item.instituicao}</h3>
                             <span class="tipo-badge">${item.tipo_conta}</span>
                         </div>
-                        <span class="icon-conta">💳</span>
+                        <span class="icon-conta"><i class="fas fa-credit-card"></i></span>
                     </div>
                     <div class="card-body">
                         ${item.numero_conta ? `<p><strong>Número:</strong> ${item.numero_conta}</p>` : ''}
@@ -291,8 +360,8 @@ function carregarContas() {
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
                         <div class="card-actions">
-                            <button onclick="editarConta(${item.id})">✏️ Editar</button>
-                            <button onclick="deletarConta(${item.id})">🗑️ Excluir</button>
+                            <button onclick="editarConta(${item.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="deletarConta(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
                         </div>
                     </div>
                 </div>
@@ -446,16 +515,17 @@ function carregarDespesas() {
                         <h3>${item.descricao}</h3>
                         <div>
                             <span class="valor-item">R$ ${parseFloat(item.valor).toFixed(2).replace('.', ',')}</span>
-                            <span class="icon-despesa">💰</span>
+                            <span class="icon-despesa"><i class="fas fa-wallet"></i></span>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="despesa-info-row">
                             <span class="categoria-badge">${item.categoria}</span>
-                            ${item.instituicao ? `<span class="conta-info">📁 ${item.instituicao}</span>` : ''}
-                            ${item.data_vencimento ? `<span class="data-info">📅 ${formatarDataCurta(item.data_vencimento)}</span>` : ''}
+                            ${item.instituicao ? `<span class="conta-info"><i class="fas fa-folder"></i> ${item.instituicao}</span>` : ''}
+                            ${item.data_vencimento ? `<span class="data-info"><i class="fas fa-calendar-alt"></i> ${formatarDataCurta(item.data_vencimento)}</span>` : ''}
                         </div>
-                        ${item.observacoes ? `<p class="observacoes">💬 ${item.observacoes}</p>` : ''}
+                        ${item.observacoes ? `<p class="observacoes"><i class="fas fa-comment"></i> ${item.observacoes}</p>` : ''}
+                        ${item.foto ? `<img src="uploads/${item.foto}" alt="Foto" style="max-width: 100%; border-radius: 8px; margin-top: 15px;">` : ''}
                     </div>
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
@@ -463,9 +533,9 @@ function carregarDespesas() {
                             <label class="checkbox-label">
                                 <input type="checkbox" ${item.pago == 1 ? 'checked' : ''} 
                                        onchange="toggleDespesa(${item.id}, this.checked)">
-                                <span>${item.pago == 1 ? '✓ Pago' : 'Marcar'}</span>
+                                <span>${item.pago == 1 ? '<i class="fas fa-check"></i> Pago' : 'Marcar'}</span>
                             </label>
-                            <button onclick="deletarDespesa(${item.id})">🗑️</button>
+                            <button onclick="deletarDespesa(${item.id})"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -505,18 +575,32 @@ function adicionarDespesa(e) {
     const dataVencimento = document.getElementById('dataVencimento').value;
     const pago = document.getElementById('pagoDespesa').checked ? 1 : 0;
     const observacoes = document.getElementById('observacoesDespesa').value;
+    const fotoInput = document.getElementById('fotoDespesa');
+    const foto = fotoInput.files[0];
+    
+    const formData = new FormData();
+    formData.append('acao', 'adicionar_despesa');
+    formData.append('descricao', descricao);
+    formData.append('valor', valor);
+    formData.append('categoria', categoria);
+    formData.append('conta_id', contaId);
+    formData.append('data_vencimento', dataVencimento);
+    formData.append('pago', pago);
+    formData.append('observacoes', observacoes);
+    if (foto) {
+        formData.append('foto', foto);
+    }
     
     fetch('api.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=adicionar_despesa&descricao=${encodeURIComponent(descricao)}&valor=${valor}&categoria=${encodeURIComponent(categoria)}&conta_id=${contaId}&data_vencimento=${dataVencimento}&pago=${pago}&observacoes=${encodeURIComponent(observacoes)}`
+        body: formData
     })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 document.getElementById('formDespesa').reset();
+                document.getElementById('previewDespesa').classList.remove('active');
+                document.getElementById('previewDespesa').innerHTML = '';
                 carregarDespesas();
                 carregarEstatisticas();
             } else {
@@ -584,25 +668,42 @@ function carregarDiarios() {
                 return;
             }
             
-            lista.innerHTML = data.map(item => `
+            lista.innerHTML = data.map(item => {
+                let humorIcon = '';
+                if (item.humor) {
+                    const humorMap = {
+                        'happy': '<i class="fas fa-smile"></i>',
+                        'sad': '<i class="fas fa-frown"></i>',
+                        'sleepy': '<i class="fas fa-bed"></i>',
+                        'angry': '<i class="fas fa-angry"></i>',
+                        'confident': '<i class="fas fa-smile-beam"></i>',
+                        'thinking': '<i class="fas fa-meh"></i>',
+                        'love': '<i class="fas fa-heart"></i>',
+                        'celebrate': '<i class="fas fa-party-horn"></i>'
+                    };
+                    humorIcon = humorMap[item.humor] || '';
+                }
+                return `
                 <div class="card diario-card">
                     <div class="card-header">
                         <h3>${item.titulo}</h3>
-                        ${item.humor ? `<span class="humor-emoji">${item.humor}</span>` : '<span class="icon-diario">📖</span>'}
+                        ${humorIcon ? `<span class="humor-emoji">${humorIcon}</span>` : '<span class="icon-diario"><i class="fas fa-book"></i></span>'}
                     </div>
                     <div class="card-body">
                         <div class="diario-meta">
                             ${item.tag ? `<span class="tag">${item.tag}</span>` : ''}
-                            <span class="data">📅 ${formatarDataCurta(item.data_diario)}</span>
+                            <span class="data"><i class="fas fa-calendar-alt"></i> ${formatarDataCurta(item.data_diario)}</span>
                         </div>
                         <p>${item.conteudo}</p>
+                        ${item.foto ? `<img src="uploads/${item.foto}" alt="Foto" style="max-width: 100%; border-radius: 8px; margin-top: 15px;">` : ''}
                     </div>
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
-                        <button onclick="deletarDiario(${item.id})">🗑️ Excluir</button>
+                        <button onclick="deletarDiario(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         })
         .catch(error => console.error('Erro ao carregar diários:', error));
 }
@@ -615,19 +716,31 @@ function adicionarDiario(e) {
     const humor = document.getElementById('humorDiario').value;
     const tag = document.getElementById('tagDiario').value;
     const dataDiario = document.getElementById('dataDiario').value;
+    const fotoInput = document.getElementById('fotoDiario');
+    const foto = fotoInput.files[0];
+    
+    const formData = new FormData();
+    formData.append('acao', 'adicionar_diario');
+    formData.append('titulo', titulo);
+    formData.append('conteudo', conteudo);
+    formData.append('humor', humor);
+    formData.append('tag', tag);
+    formData.append('data_diario', dataDiario);
+    if (foto) {
+        formData.append('foto', foto);
+    }
     
     fetch('api.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=adicionar_diario&titulo=${encodeURIComponent(titulo)}&conteudo=${encodeURIComponent(conteudo)}&humor=${encodeURIComponent(humor)}&tag=${encodeURIComponent(tag)}&data_diario=${dataDiario}`
+        body: formData
     })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 document.getElementById('formDiario').reset();
                 document.getElementById('dataDiario').valueAsDate = new Date();
+                document.getElementById('previewDiario').classList.remove('active');
+                document.getElementById('previewDiario').innerHTML = '';
                 carregarDiarios();
             } else {
                 alert('Erro ao adicionar entrada no diário');
