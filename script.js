@@ -1,5 +1,64 @@
-// Variável global para controlar edição
+// Variáveis globais para controlar edição
 let contaEditandoId = null;
+let anotacaoEditandoId = null;
+let despesaEditandoId = null;
+let diarioEditandoId = null;
+let acaoConfirmar = null;
+let itemParaDeletar = null;
+
+// ========== MODAIS ==========
+
+function mostrarModalConfirmacao(mensagem, callback, tipo = 'danger') {
+    const modal = document.getElementById('modalConfirmacao');
+    const mensagemEl = document.getElementById('modalMensagem');
+    const btnConfirmar = document.getElementById('btnConfirmarAcao');
+    
+    mensagemEl.textContent = mensagem;
+    btnConfirmar.className = 'btn-confirmar ' + tipo;
+    btnConfirmar.textContent = tipo === 'danger' ? 'Excluir' : 'Confirmar';
+    
+    // Remover listeners anteriores
+    const novoBtn = btnConfirmar.cloneNode(true);
+    btnConfirmar.parentNode.replaceChild(novoBtn, btnConfirmar);
+    
+    // Adicionar novo listener
+    document.getElementById('btnConfirmarAcao').addEventListener('click', function() {
+        if (callback) callback();
+        fecharModal('modalConfirmacao');
+    });
+    
+    modal.classList.add('show');
+}
+
+function mostrarModalAlerta(titulo, mensagem, tipo = 'info') {
+    const modal = document.getElementById('modalAlerta');
+    const tituloEl = document.getElementById('modalAlertaTitulo');
+    const mensagemEl = document.getElementById('modalAlertaMensagem');
+    
+    const icones = {
+        'info': 'fa-info-circle',
+        'error': 'fa-exclamation-circle',
+        'success': 'fa-check-circle',
+        'warning': 'fa-exclamation-triangle'
+    };
+    
+    tituloEl.innerHTML = `<i class="fas ${icones[tipo] || icones.info}"></i> ${titulo}`;
+    mensagemEl.textContent = mensagem;
+    
+    modal.classList.add('show');
+}
+
+function fecharModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('show');
+}
+
+// Fechar modal ao clicar fora
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        fecharModal(e.target.id);
+    }
+});
 
 // Carregar dados ao iniciar
 document.addEventListener('DOMContentLoaded', function() {
@@ -152,7 +211,10 @@ function carregarAnotacoes() {
                     </div>
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
-                        <button onclick="deletarAnotacao(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
+                        <div class="card-actions">
+                            <button onclick="editarAnotacao(${item.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="deletarAnotacao(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -171,8 +233,15 @@ function adicionarAnotacao(e) {
     const fotoInput = document.getElementById('fotoAnotacao');
     const foto = fotoInput.files[0];
     
+    const acao = anotacaoEditandoId ? 'atualizar_anotacao' : 'adicionar_anotacao';
     const formData = new FormData();
-    formData.append('acao', 'adicionar_anotacao');
+    formData.append('acao', acao);
+    if (anotacaoEditandoId) {
+        formData.append('id', anotacaoEditandoId);
+        // Manter foto atual se não houver nova
+        const fotoAtual = document.getElementById('fotoAnotacao').dataset.fotoAtual || '';
+        formData.append('foto_atual', fotoAtual);
+    }
     formData.append('titulo', titulo);
     formData.append('conteudo', conteudo);
     if (foto) {
@@ -191,41 +260,94 @@ function adicionarAnotacao(e) {
         })
         .then(data => {
             if (data.success) {
+                const estavaEditando = anotacaoEditandoId !== null;
+                
                 document.getElementById('formAnotacao').reset();
                 document.getElementById('previewAnotacao').classList.remove('active');
                 document.getElementById('previewAnotacao').innerHTML = '';
+                
+                // Resetar edição
+                if (anotacaoEditandoId) {
+                    const button = document.getElementById('formAnotacao').querySelector('button[type="submit"]');
+                    button.textContent = 'Adicionar Anotação';
+                    anotacaoEditandoId = null;
+                }
+                
                 carregarAnotacoes();
+                mostrarModalAlerta('Sucesso', estavaEditando ? 'Anotação atualizada com sucesso!' : 'Anotação adicionada com sucesso!', 'success');
             } else {
-                alert('Erro ao adicionar anotação: ' + (data.error || 'Erro desconhecido'));
+                mostrarModalAlerta('Erro', 'Erro ao adicionar anotação: ' + (data.error || 'Erro desconhecido'), 'error');
             }
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao adicionar anotação. Verifique se o banco de dados está configurado.');
+            mostrarModalAlerta('Erro', 'Erro ao adicionar anotação. Verifique se o banco de dados está configurado.', 'error');
+        });
+}
+
+function editarAnotacao(id) {
+    fetch('api.php?acao=listar_anotacoes')
+        .then(response => response.json())
+        .then(anotacoes => {
+            const anotacao = anotacoes.find(a => a.id == id);
+            
+            if (!anotacao) {
+                mostrarModalAlerta('Erro', 'Anotação não encontrada!', 'error');
+                return;
+            }
+            
+            // Preencher formulário
+            document.getElementById('tituloAnotacao').value = anotacao.titulo;
+            document.getElementById('conteudoAnotacao').value = anotacao.conteudo;
+            
+            // Preview da foto atual
+            if (anotacao.foto) {
+                const preview = document.getElementById('previewAnotacao');
+                preview.innerHTML = `<img src="uploads/${anotacao.foto}" alt="Foto atual">`;
+                preview.classList.add('active');
+                document.getElementById('fotoAnotacao').dataset.fotoAtual = anotacao.foto;
+            }
+            
+            // Marcar que está editando
+            anotacaoEditandoId = id;
+            
+            // Alterar botão
+            const formAnotacao = document.getElementById('formAnotacao');
+            const button = formAnotacao.querySelector('button[type="submit"]');
+            button.textContent = 'Atualizar Anotação';
+            
+            // Scroll até o formulário
+            formAnotacao.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarModalAlerta('Erro', 'Erro ao carregar dados da anotação', 'error');
         });
 }
 
 function deletarAnotacao(id) {
-    if (!confirm('Tem certeza que deseja excluir esta anotação?')) {
-        return;
-    }
-    
-    fetch('api.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=deletar_anotacao&id=${id}`
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                carregarAnotacoes();
-            } else {
-                alert('Erro ao excluir anotação');
-            }
+    mostrarModalConfirmacao('Tem certeza que deseja excluir esta anotação?', function() {
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `acao=deletar_anotacao&id=${id}`
         })
-        .catch(error => console.error('Erro:', error));
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    carregarAnotacoes();
+                    mostrarModalAlerta('Sucesso', 'Anotação excluída com sucesso!', 'success');
+                } else {
+                    mostrarModalAlerta('Erro', 'Erro ao excluir anotação', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                mostrarModalAlerta('Erro', 'Erro ao excluir anotação', 'error');
+            });
+    }, 'danger');
 }
 
 // ========== LEMBRETES ==========
@@ -279,7 +401,7 @@ function adicionarLembrete(e) {
                 document.getElementById('formLembrete').reset();
                 carregarLembretes();
             } else {
-                alert('Erro ao adicionar lembrete');
+                mostrarModalAlerta('Erro', 'Erro ao adicionar lembrete', 'error');
             }
         })
         .catch(error => console.error('Erro:', error));
@@ -299,7 +421,7 @@ function toggleLembrete(id) {
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
-                alert('Erro ao atualizar lembrete');
+                mostrarModalAlerta('Erro', 'Erro ao atualizar lembrete', 'error');
                 checkbox.checked = !checkbox.checked;
             }
         })
@@ -310,26 +432,28 @@ function toggleLembrete(id) {
 }
 
 function deletarLembrete(id) {
-    if (!confirm('Tem certeza que deseja excluir este lembrete?')) {
-        return;
-    }
-    
-    fetch('api.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=deletar_lembrete&id=${id}`
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                carregarLembretes();
-            } else {
-                alert('Erro ao excluir lembrete');
-            }
+    mostrarModalConfirmacao('Tem certeza que deseja excluir este lembrete?', function() {
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `acao=deletar_lembrete&id=${id}`
         })
-        .catch(error => console.error('Erro:', error));
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    carregarLembretes();
+                    mostrarModalAlerta('Sucesso', 'Lembrete excluído com sucesso!', 'success');
+                } else {
+                    mostrarModalAlerta('Erro', 'Erro ao excluir lembrete', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                mostrarModalAlerta('Erro', 'Erro ao excluir lembrete', 'error');
+            });
+    }, 'danger');
 }
 
 // ========== CONTAS ==========
@@ -407,9 +531,11 @@ function adicionarConta(e) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                const estavaEditando = contaEditandoId !== null;
+                
                 document.getElementById('formConta').reset();
                 
-                // Resetar botão se estava editando
+                // Resetar edição
                 if (contaEditandoId) {
                     const button = document.getElementById('formConta').querySelector('button[type="submit"]');
                     button.textContent = 'Adicionar Conta';
@@ -417,8 +543,9 @@ function adicionarConta(e) {
                 }
                 
                 carregarContas();
+                mostrarModalAlerta('Sucesso', estavaEditando ? 'Conta atualizada com sucesso!' : 'Conta adicionada com sucesso!', 'success');
             } else {
-                alert('Erro ao ' + (contaEditandoId ? 'atualizar' : 'adicionar') + ' conta');
+                mostrarModalAlerta('Erro', 'Erro ao ' + (contaEditandoId ? 'atualizar' : 'adicionar') + ' conta', 'error');
             }
         })
         .catch(error => console.error('Erro:', error));
@@ -432,7 +559,7 @@ function editarConta(id) {
             const conta = contas.find(c => c.id == id);
             
             if (!conta) {
-                alert('Conta não encontrada!');
+                mostrarModalAlerta('Erro', 'Conta não encontrada!', 'error');
                 return;
             }
             
@@ -456,32 +583,34 @@ function editarConta(id) {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao carregar dados da conta');
+            mostrarModalAlerta('Erro', 'Erro ao carregar dados da conta', 'error');
         });
 }
 
 function deletarConta(id) {
-    if (!confirm('Tem certeza que deseja excluir esta conta? Despesas associadas terão o vínculo removido.')) {
-        return;
-    }
-    
-    fetch('api.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=deletar_conta&id=${id}`
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                carregarContas();
-                carregarDespesas();
-            } else {
-                alert('Erro ao excluir conta');
-            }
+    mostrarModalConfirmacao('Tem certeza que deseja excluir esta conta? Despesas associadas terão o vínculo removido.', function() {
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `acao=deletar_conta&id=${id}`
         })
-        .catch(error => console.error('Erro:', error));
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    carregarContas();
+                    carregarDespesas();
+                    mostrarModalAlerta('Sucesso', 'Conta excluída com sucesso!', 'success');
+                } else {
+                    mostrarModalAlerta('Erro', 'Erro ao excluir conta', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                mostrarModalAlerta('Erro', 'Erro ao excluir conta', 'error');
+            });
+    }, 'danger');
 }
 
 // ========== DESPESAS ==========
@@ -543,7 +672,8 @@ function carregarDespesas() {
                                        onchange="toggleDespesa(${item.id}, this.checked)">
                                 <span>${item.pago == 1 ? '<i class="fas fa-check"></i> Pago' : 'Marcar'}</span>
                             </label>
-                            <button onclick="deletarDespesa(${item.id})"><i class="fas fa-trash"></i></button>
+                            <button onclick="editarDespesa(${item.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="deletarDespesa(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
                         </div>
                     </div>
                 </div>
@@ -586,8 +716,12 @@ function adicionarDespesa(e) {
     const fotoInput = document.getElementById('fotoDespesa');
     const foto = fotoInput.files[0];
     
+    const acao = despesaEditandoId ? 'atualizar_despesa' : 'adicionar_despesa';
     const formData = new FormData();
-    formData.append('acao', 'adicionar_despesa');
+    formData.append('acao', acao);
+    if (despesaEditandoId) {
+        formData.append('id', despesaEditandoId);
+    }
     formData.append('descricao', descricao);
     formData.append('valor', valor);
     formData.append('categoria', categoria);
@@ -595,6 +729,10 @@ function adicionarDespesa(e) {
     formData.append('data_vencimento', dataVencimento);
     formData.append('pago', pago);
     formData.append('observacoes', observacoes);
+    if (despesaEditandoId) {
+        const fotoAtual = document.getElementById('fotoDespesa').dataset.fotoAtual || '';
+        formData.append('foto_atual', fotoAtual);
+    }
     if (foto) {
         formData.append('foto', foto);
     }
@@ -606,13 +744,24 @@ function adicionarDespesa(e) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                const estavaEditando = despesaEditandoId !== null;
+                
                 document.getElementById('formDespesa').reset();
                 document.getElementById('previewDespesa').classList.remove('active');
                 document.getElementById('previewDespesa').innerHTML = '';
+                
+                // Resetar edição
+                if (despesaEditandoId) {
+                    const button = document.getElementById('formDespesa').querySelector('button[type="submit"]');
+                    button.textContent = 'Adicionar Despesa';
+                    despesaEditandoId = null;
+                }
+                
                 carregarDespesas();
                 carregarEstatisticas();
+                mostrarModalAlerta('Sucesso', estavaEditando ? 'Despesa atualizada com sucesso!' : 'Despesa adicionada com sucesso!', 'success');
             } else {
-                alert('Erro ao adicionar despesa');
+                mostrarModalAlerta('Erro', 'Erro ao adicionar despesa', 'error');
             }
         })
         .catch(error => console.error('Erro:', error));
@@ -634,34 +783,81 @@ function toggleDespesa(id, checked) {
                 carregarDespesas();
                 carregarEstatisticas();
             } else {
-                alert('Erro ao atualizar despesa');
+                mostrarModalAlerta('Erro', 'Erro ao atualizar despesa', 'error');
             }
         })
         .catch(error => console.error('Erro:', error));
 }
 
-function deletarDespesa(id) {
-    if (!confirm('Tem certeza que deseja excluir esta despesa?')) {
-        return;
-    }
-    
-    fetch('api.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=deletar_despesa&id=${id}`
-    })
+function editarDespesa(id) {
+    fetch('api.php?acao=listar_despesas')
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                carregarDespesas();
-                carregarEstatisticas();
-            } else {
-                alert('Erro ao excluir despesa');
+        .then(despesas => {
+            const despesa = despesas.find(d => d.id == id);
+            
+            if (!despesa) {
+                mostrarModalAlerta('Erro', 'Despesa não encontrada!', 'error');
+                return;
             }
+            
+            // Preencher formulário
+            document.getElementById('descricaoDespesa').value = despesa.descricao;
+            document.getElementById('valorDespesa').value = parseFloat(despesa.valor).toFixed(2);
+            document.getElementById('categoriaDespesa').value = despesa.categoria;
+            document.getElementById('contaDespesa').value = despesa.conta_id || '';
+            document.getElementById('dataVencimento').value = despesa.data_vencimento || '';
+            document.getElementById('pagoDespesa').checked = despesa.pago == 1;
+            document.getElementById('observacoesDespesa').value = despesa.observacoes || '';
+            
+            // Preview da foto atual
+            if (despesa.foto) {
+                const preview = document.getElementById('previewDespesa');
+                preview.innerHTML = `<img src="uploads/${despesa.foto}" alt="Foto atual">`;
+                preview.classList.add('active');
+                document.getElementById('fotoDespesa').dataset.fotoAtual = despesa.foto;
+            }
+            
+            // Marcar que está editando
+            despesaEditandoId = id;
+            
+            // Alterar botão
+            const formDespesa = document.getElementById('formDespesa');
+            const button = formDespesa.querySelector('button[type="submit"]');
+            button.textContent = 'Atualizar Despesa';
+            
+            // Scroll até o formulário
+            formDespesa.scrollIntoView({ behavior: 'smooth', block: 'start' });
         })
-        .catch(error => console.error('Erro:', error));
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarModalAlerta('Erro', 'Erro ao carregar dados da despesa', 'error');
+        });
+}
+
+function deletarDespesa(id) {
+    mostrarModalConfirmacao('Tem certeza que deseja excluir esta despesa?', function() {
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `acao=deletar_despesa&id=${id}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    carregarDespesas();
+                    carregarEstatisticas();
+                    mostrarModalAlerta('Sucesso', 'Despesa excluída com sucesso!', 'success');
+                } else {
+                    mostrarModalAlerta('Erro', 'Erro ao excluir despesa', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                mostrarModalAlerta('Erro', 'Erro ao excluir despesa', 'error');
+            });
+    }, 'danger');
 }
 
 // ========== DIÁRIO PESSOAL ==========
@@ -707,7 +903,10 @@ function carregarDiarios() {
                     </div>
                     <div class="card-footer">
                         <span class="data">${formatarData(item.data_criacao)}</span>
-                        <button onclick="deletarDiario(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
+                        <div class="card-actions">
+                            <button onclick="editarDiario(${item.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="deletarDiario(${item.id})"><i class="fas fa-trash"></i> Excluir</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -727,13 +926,21 @@ function adicionarDiario(e) {
     const fotoInput = document.getElementById('fotoDiario');
     const foto = fotoInput.files[0];
     
+    const acao = diarioEditandoId ? 'atualizar_diario' : 'adicionar_diario';
     const formData = new FormData();
-    formData.append('acao', 'adicionar_diario');
+    formData.append('acao', acao);
+    if (diarioEditandoId) {
+        formData.append('id', diarioEditandoId);
+    }
     formData.append('titulo', titulo);
     formData.append('conteudo', conteudo);
     formData.append('humor', humor);
     formData.append('tag', tag);
     formData.append('data_diario', dataDiario);
+    if (diarioEditandoId) {
+        const fotoAtual = document.getElementById('fotoDiario').dataset.fotoAtual || '';
+        formData.append('foto_atual', fotoAtual);
+    }
     if (foto) {
         formData.append('foto', foto);
     }
@@ -745,39 +952,95 @@ function adicionarDiario(e) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                const estavaEditando = diarioEditandoId !== null;
+                
                 document.getElementById('formDiario').reset();
                 document.getElementById('dataDiario').valueAsDate = new Date();
                 document.getElementById('previewDiario').classList.remove('active');
                 document.getElementById('previewDiario').innerHTML = '';
+                
+                // Resetar edição
+                if (diarioEditandoId) {
+                    const button = document.getElementById('formDiario').querySelector('button[type="submit"]');
+                    button.textContent = 'Adicionar Entrada';
+                    diarioEditandoId = null;
+                }
+                
                 carregarDiarios();
+                mostrarModalAlerta('Sucesso', estavaEditando ? 'Entrada do diário atualizada com sucesso!' : 'Entrada do diário adicionada com sucesso!', 'success');
             } else {
-                alert('Erro ao adicionar entrada no diário');
+                mostrarModalAlerta('Erro', 'Erro ao adicionar entrada no diário', 'error');
             }
         })
         .catch(error => console.error('Erro:', error));
 }
 
-function deletarDiario(id) {
-    if (!confirm('Tem certeza que deseja excluir esta entrada do diário?')) {
-        return;
-    }
-    
-    fetch('api.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `acao=deletar_diario&id=${id}`
-    })
+function editarDiario(id) {
+    fetch('api.php?acao=listar_diarios')
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                carregarDiarios();
-            } else {
-                alert('Erro ao excluir entrada do diário');
+        .then(diarios => {
+            const diario = diarios.find(d => d.id == id);
+            
+            if (!diario) {
+                mostrarModalAlerta('Erro', 'Entrada do diário não encontrada!', 'error');
+                return;
             }
+            
+            // Preencher formulário
+            document.getElementById('tituloDiario').value = diario.titulo;
+            document.getElementById('conteudoDiario').value = diario.conteudo;
+            document.getElementById('humorDiario').value = diario.humor || '';
+            document.getElementById('tagDiario').value = diario.tag || '';
+            document.getElementById('dataDiario').value = diario.data_diario;
+            
+            // Preview da foto atual
+            if (diario.foto) {
+                const preview = document.getElementById('previewDiario');
+                preview.innerHTML = `<img src="uploads/${diario.foto}" alt="Foto atual">`;
+                preview.classList.add('active');
+                document.getElementById('fotoDiario').dataset.fotoAtual = diario.foto;
+            }
+            
+            // Marcar que está editando
+            diarioEditandoId = id;
+            
+            // Alterar botão
+            const formDiario = document.getElementById('formDiario');
+            const button = formDiario.querySelector('button[type="submit"]');
+            button.textContent = 'Atualizar Entrada';
+            
+            // Scroll até o formulário
+            formDiario.scrollIntoView({ behavior: 'smooth', block: 'start' });
         })
-        .catch(error => console.error('Erro:', error));
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarModalAlerta('Erro', 'Erro ao carregar dados do diário', 'error');
+        });
+}
+
+function deletarDiario(id) {
+    mostrarModalConfirmacao('Tem certeza que deseja excluir esta entrada do diário?', function() {
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `acao=deletar_diario&id=${id}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    carregarDiarios();
+                    mostrarModalAlerta('Sucesso', 'Entrada do diário excluída com sucesso!', 'success');
+                } else {
+                    mostrarModalAlerta('Erro', 'Erro ao excluir entrada do diário', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                mostrarModalAlerta('Erro', 'Erro ao excluir entrada do diário', 'error');
+            });
+    }, 'danger');
 }
 
 // ========== UTILITÁRIOS ==========

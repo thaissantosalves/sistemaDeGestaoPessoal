@@ -202,6 +202,39 @@
         </div>
     </footer>
     
+    <!-- Modal de Confirmação -->
+    <div id="modalConfirmacao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Confirmar Ação</h3>
+                <button class="modal-close" onclick="fecharModal('modalConfirmacao')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMensagem"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModal('modalConfirmacao')">Cancelar</button>
+                <button class="btn-confirmar" id="btnConfirmarAcao">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Alerta/Erro -->
+    <div id="modalAlerta" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalAlertaTitulo"><i class="fas fa-info-circle"></i> Informação</h3>
+                <button class="modal-close" onclick="fecharModal('modalAlerta')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalAlertaMensagem"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-confirmar" onclick="fecharModal('modalAlerta')">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>

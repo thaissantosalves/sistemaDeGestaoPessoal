@@ -230,6 +230,14 @@
                     <input type="email" id="emailRegistro" name="email" required>
                 </div>
                 <div class="form-group">
+                    <label for="cpfRegistro"><i class="fas fa-id-card"></i> CPF</label>
+                    <input type="text" id="cpfRegistro" name="cpf" placeholder="000.000.000-00" maxlength="14" required>
+                </div>
+                <div class="form-group">
+                    <label for="cepRegistro"><i class="fas fa-map-marker-alt"></i> CEP</label>
+                    <input type="text" id="cepRegistro" name="cep" placeholder="00000-000" maxlength="9" required>
+                </div>
+                <div class="form-group">
                     <label for="senhaRegistro"><i class="fas fa-lock"></i> Senha (mínimo 6 caracteres)</label>
                     <input type="password" id="senhaRegistro" name="senha" required minlength="6">
                 </div>
@@ -307,11 +315,90 @@
             });
         }
         
+        // Função para validar CPF
+        function validarCPF(cpf) {
+            cpf = cpf.replace(/[^\d]+/g, '');
+            
+            if (cpf.length !== 11) return false;
+            
+            // Verificar se todos os dígitos são iguais
+            if (/^(\d)\1{10}$/.test(cpf)) return false;
+            
+            // Validar dígitos verificadores
+            let soma = 0;
+            for (let i = 0; i < 9; i++) {
+                soma += parseInt(cpf.charAt(i)) * (10 - i);
+            }
+            let resto = 11 - (soma % 11);
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.charAt(9))) return false;
+            
+            soma = 0;
+            for (let i = 0; i < 10; i++) {
+                soma += parseInt(cpf.charAt(i)) * (11 - i);
+            }
+            resto = 11 - (soma % 11);
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.charAt(10))) return false;
+            
+            return true;
+        }
+        
+        // Função para formatar CPF
+        function formatarCPF(cpf) {
+            cpf = cpf.replace(/[^\d]+/g, '');
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        
+        // Função para formatar CEP
+        function formatarCEP(cep) {
+            cep = cep.replace(/[^\d]+/g, '');
+            return cep.replace(/(\d{5})(\d{3})/, '$1-$2');
+        }
+        
+        // Máscaras de input
+        document.addEventListener('DOMContentLoaded', function() {
+            const cpfInput = document.getElementById('cpfRegistro');
+            const cepInput = document.getElementById('cepRegistro');
+            
+            if (cpfInput) {
+                cpfInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/[^\d]+/g, '');
+                    if (value.length <= 11) {
+                        if (value.length <= 3) {
+                            e.target.value = value;
+                        } else if (value.length <= 6) {
+                            e.target.value = value.replace(/(\d{3})(\d+)/, '$1.$2');
+                        } else if (value.length <= 9) {
+                            e.target.value = value.replace(/(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
+                        } else {
+                            e.target.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                        }
+                    }
+                });
+            }
+            
+            if (cepInput) {
+                cepInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/[^\d]+/g, '');
+                    if (value.length <= 8) {
+                        if (value.length <= 5) {
+                            e.target.value = value;
+                        } else {
+                            e.target.value = value.replace(/(\d{5})(\d{3})/, '$1-$2');
+                        }
+                    }
+                });
+            }
+        });
+        
         function fazerRegistro(e) {
             e.preventDefault();
             
             const nome = document.getElementById('nomeRegistro').value;
             const email = document.getElementById('emailRegistro').value;
+            const cpf = document.getElementById('cpfRegistro').value;
+            const cep = document.getElementById('cepRegistro').value;
             const senha = document.getElementById('senhaRegistro').value;
             
             if (senha.length < 6) {
@@ -319,10 +406,25 @@
                 return;
             }
             
+            // Validar CPF
+            if (!validarCPF(cpf)) {
+                mostrarMensagem('error', 'CPF inválido');
+                return;
+            }
+            
+            // Validar CEP
+            const cepLimpo = cep.replace(/[^\d]+/g, '');
+            if (cepLimpo.length !== 8) {
+                mostrarMensagem('error', 'CEP deve ter 8 dígitos');
+                return;
+            }
+            
             const formData = new FormData();
             formData.append('acao', 'registro');
             formData.append('nome', nome);
             formData.append('email', email);
+            formData.append('cpf', cpf);
+            formData.append('cep', cep);
             formData.append('senha', senha);
             
             fetch('auth.php', {

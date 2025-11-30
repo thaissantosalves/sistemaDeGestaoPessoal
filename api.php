@@ -89,6 +89,26 @@ switch($acao) {
         }
         break;
     
+    case 'atualizar_anotacao':
+        try {
+            $id = $_POST['id'] ?? 0;
+            $titulo = $_POST['titulo'] ?? '';
+            $conteudo = $_POST['conteudo'] ?? '';
+            $foto = $_POST['foto_atual'] ?? null;
+            
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $foto = uploadFoto($_FILES['foto'], 'anotacao');
+            }
+            
+            $stmt = $pdo->prepare("UPDATE anotacoes SET titulo = ?, conteudo = ?, foto = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$titulo, $conteudo, $foto, $id, $user_id]);
+            
+            echo json_encode(['success' => true]);
+        } catch(PDOException $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        break;
+    
     case 'deletar_anotacao':
         try {
             $id = $_POST['id'] ?? 0;
@@ -260,9 +280,14 @@ switch($acao) {
             $data_vencimento = $_POST['data_vencimento'] ?? null;
             $pago = $_POST['pago'] ?? 0;
             $observacoes = $_POST['observacoes'] ?? '';
+            $foto = $_POST['foto_atual'] ?? null;
             
-            $stmt = $pdo->prepare("UPDATE despesas SET descricao = ?, valor = ?, categoria = ?, conta_id = ?, data_vencimento = ?, pago = ?, observacoes = ? WHERE id = ? AND user_id = ?");
-            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $id, $user_id]);
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $foto = uploadFoto($_FILES['foto'], 'despesa');
+            }
+            
+            $stmt = $pdo->prepare("UPDATE despesas SET descricao = ?, valor = ?, categoria = ?, conta_id = ?, data_vencimento = ?, pago = ?, observacoes = ?, foto = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $foto, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -339,9 +364,14 @@ switch($acao) {
             $humor = $_POST['humor'] ?? '';
             $tag = $_POST['tag'] ?? '';
             $data_diario = $_POST['data_diario'] ?? date('Y-m-d');
+            $foto = $_POST['foto_atual'] ?? null;
             
-            $stmt = $pdo->prepare("UPDATE diarios SET titulo = ?, conteudo = ?, humor = ?, tag = ?, data_diario = ? WHERE id = ? AND user_id = ?");
-            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario, $id, $user_id]);
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $foto = uploadFoto($_FILES['foto'], 'diario');
+            }
+            
+            $stmt = $pdo->prepare("UPDATE diarios SET titulo = ?, conteudo = ?, humor = ?, tag = ?, data_diario = ?, foto = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario, $foto, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
