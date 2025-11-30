@@ -1,8 +1,14 @@
 <?php
 header('Content-Type: application/json');
 
-// Tente conectar ao banco
+// Iniciar sessão
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+    // Tente conectar ao banco
 require_once 'config.php';
+require_once 'session.php';
 
 // Verificar se a conexão foi estabelecida
 if ($pdo === null) {
@@ -10,6 +16,17 @@ if ($pdo === null) {
     echo json_encode(['error' => 'Erro de conexão com o banco de dados: ' . $errorMsg]);
     exit;
 }
+
+// Verificar autenticação (exceto para ações de autenticação)
+$acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
+$acoesPublicas = ['verificar_sessao'];
+
+if (!in_array($acao, $acoesPublicas) && !verificarLogin()) {
+    echo json_encode(['error' => 'Usuário não autenticado. Faça login primeiro.']);
+    exit;
+}
+
+$user_id = getUserId();
 
 // Criar diretório de uploads se não existir
 if (!file_exists('uploads')) {
@@ -44,7 +61,8 @@ switch($acao) {
     // ========== ANOTAÇÕES ==========
     case 'listar_anotacoes':
         try {
-            $stmt = $pdo->query("SELECT * FROM anotacoes ORDER BY data_criacao DESC");
+            $stmt = $pdo->prepare("SELECT * FROM anotacoes WHERE user_id = ? ORDER BY data_criacao DESC");
+            $stmt->execute([$user_id]);
             $anotacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($anotacoes);
         } catch(PDOException $e) {
@@ -62,8 +80,8 @@ switch($acao) {
                 $foto = uploadFoto($_FILES['foto'], 'anotacao');
             }
             
-            $stmt = $pdo->prepare("INSERT INTO anotacoes (titulo, conteudo, foto) VALUES (?, ?, ?)");
-            $stmt->execute([$titulo, $conteudo, $foto]);
+            $stmt = $pdo->prepare("INSERT INTO anotacoes (user_id, titulo, conteudo, foto) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$user_id, $titulo, $conteudo, $foto]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -75,8 +93,8 @@ switch($acao) {
         try {
             $id = $_POST['id'] ?? 0;
             
-            $stmt = $pdo->prepare("DELETE FROM anotacoes WHERE id = ?");
-            $stmt->execute([$id]);
+            $stmt = $pdo->prepare("DELETE FROM anotacoes WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -87,7 +105,8 @@ switch($acao) {
     // ========== LEMBRETES ==========
     case 'listar_lembretes':
         try {
-            $stmt = $pdo->query("SELECT * FROM lembretes ORDER BY data_criacao DESC");
+            $stmt = $pdo->prepare("SELECT * FROM lembretes WHERE user_id = ? ORDER BY data_criacao DESC");
+            $stmt->execute([$user_id]);
             $lembretes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($lembretes);
         } catch(PDOException $e) {
@@ -99,8 +118,8 @@ switch($acao) {
         try {
             $descricao = $_POST['descricao'] ?? '';
             
-            $stmt = $pdo->prepare("INSERT INTO lembretes (descricao) VALUES (?)");
-            $stmt->execute([$descricao]);
+            $stmt = $pdo->prepare("INSERT INTO lembretes (user_id, descricao) VALUES (?, ?)");
+            $stmt->execute([$user_id, $descricao]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -113,8 +132,8 @@ switch($acao) {
             $id = $_POST['id'] ?? 0;
             $concluido = $_POST['concluido'] ?? 0;
             
-            $stmt = $pdo->prepare("UPDATE lembretes SET concluido = ? WHERE id = ?");
-            $stmt->execute([$concluido, $id]);
+            $stmt = $pdo->prepare("UPDATE lembretes SET concluido = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$concluido, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -126,8 +145,8 @@ switch($acao) {
         try {
             $id = $_POST['id'] ?? 0;
             
-            $stmt = $pdo->prepare("DELETE FROM lembretes WHERE id = ?");
-            $stmt->execute([$id]);
+            $stmt = $pdo->prepare("DELETE FROM lembretes WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -138,7 +157,8 @@ switch($acao) {
     // ========== CONTAS ==========
     case 'listar_contas':
         try {
-            $stmt = $pdo->query("SELECT * FROM contas ORDER BY instituicao ASC");
+            $stmt = $pdo->prepare("SELECT * FROM contas WHERE user_id = ? ORDER BY instituicao ASC");
+            $stmt->execute([$user_id]);
             $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($contas);
         } catch(PDOException $e) {
@@ -154,8 +174,8 @@ switch($acao) {
             $saldo = $_POST['saldo'] ?? 0;
             $descricao = $_POST['descricao'] ?? '';
             
-            $stmt = $pdo->prepare("INSERT INTO contas (instituicao, tipo_conta, numero_conta, saldo, descricao) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$instituicao, $tipo_conta, $numero_conta, $saldo, $descricao]);
+            $stmt = $pdo->prepare("INSERT INTO contas (user_id, instituicao, tipo_conta, numero_conta, saldo, descricao) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $instituicao, $tipo_conta, $numero_conta, $saldo, $descricao]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -172,8 +192,8 @@ switch($acao) {
             $saldo = $_POST['saldo'] ?? 0;
             $descricao = $_POST['descricao'] ?? '';
             
-            $stmt = $pdo->prepare("UPDATE contas SET instituicao = ?, tipo_conta = ?, numero_conta = ?, saldo = ?, descricao = ? WHERE id = ?");
-            $stmt->execute([$instituicao, $tipo_conta, $numero_conta, $saldo, $descricao, $id]);
+            $stmt = $pdo->prepare("UPDATE contas SET instituicao = ?, tipo_conta = ?, numero_conta = ?, saldo = ?, descricao = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$instituicao, $tipo_conta, $numero_conta, $saldo, $descricao, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -185,8 +205,8 @@ switch($acao) {
         try {
             $id = $_POST['id'] ?? 0;
             
-            $stmt = $pdo->prepare("DELETE FROM contas WHERE id = ?");
-            $stmt->execute([$id]);
+            $stmt = $pdo->prepare("DELETE FROM contas WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -197,7 +217,8 @@ switch($acao) {
     // ========== DESPESAS ==========
     case 'listar_despesas':
         try {
-            $stmt = $pdo->query("SELECT d.*, c.instituicao FROM despesas d LEFT JOIN contas c ON d.conta_id = c.id ORDER BY d.data_vencimento ASC, d.data_criacao DESC");
+            $stmt = $pdo->prepare("SELECT d.*, c.instituicao FROM despesas d LEFT JOIN contas c ON d.conta_id = c.id WHERE d.user_id = ? ORDER BY d.data_vencimento ASC, d.data_criacao DESC");
+            $stmt->execute([$user_id]);
             $despesas = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($despesas);
         } catch(PDOException $e) {
@@ -220,8 +241,8 @@ switch($acao) {
                 $foto = uploadFoto($_FILES['foto'], 'despesa');
             }
             
-            $stmt = $pdo->prepare("INSERT INTO despesas (descricao, valor, categoria, conta_id, data_vencimento, pago, observacoes, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $foto]);
+            $stmt = $pdo->prepare("INSERT INTO despesas (user_id, descricao, valor, categoria, conta_id, data_vencimento, pago, observacoes, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $foto]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -240,8 +261,8 @@ switch($acao) {
             $pago = $_POST['pago'] ?? 0;
             $observacoes = $_POST['observacoes'] ?? '';
             
-            $stmt = $pdo->prepare("UPDATE despesas SET descricao = ?, valor = ?, categoria = ?, conta_id = ?, data_vencimento = ?, pago = ?, observacoes = ? WHERE id = ?");
-            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $id]);
+            $stmt = $pdo->prepare("UPDATE despesas SET descricao = ?, valor = ?, categoria = ?, conta_id = ?, data_vencimento = ?, pago = ?, observacoes = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$descricao, $valor, $categoria, $conta_id, $data_vencimento, $pago, $observacoes, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -254,8 +275,8 @@ switch($acao) {
             $id = $_POST['id'] ?? 0;
             $pago = $_POST['pago'] ?? 0;
             
-            $stmt = $pdo->prepare("UPDATE despesas SET pago = ? WHERE id = ?");
-            $stmt->execute([$pago, $id]);
+            $stmt = $pdo->prepare("UPDATE despesas SET pago = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$pago, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -267,8 +288,8 @@ switch($acao) {
         try {
             $id = $_POST['id'] ?? 0;
             
-            $stmt = $pdo->prepare("DELETE FROM despesas WHERE id = ?");
-            $stmt->execute([$id]);
+            $stmt = $pdo->prepare("DELETE FROM despesas WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -279,7 +300,8 @@ switch($acao) {
     // ========== DIÁRIO PESSOAL ==========
     case 'listar_diarios':
         try {
-            $stmt = $pdo->query("SELECT * FROM diarios ORDER BY data_diario DESC, data_criacao DESC");
+            $stmt = $pdo->prepare("SELECT * FROM diarios WHERE user_id = ? ORDER BY data_diario DESC, data_criacao DESC");
+            $stmt->execute([$user_id]);
             $diarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($diarios);
         } catch(PDOException $e) {
@@ -300,8 +322,8 @@ switch($acao) {
                 $foto = uploadFoto($_FILES['foto'], 'diario');
             }
             
-            $stmt = $pdo->prepare("INSERT INTO diarios (titulo, conteudo, humor, tag, data_diario, foto) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario, $foto]);
+            $stmt = $pdo->prepare("INSERT INTO diarios (user_id, titulo, conteudo, humor, tag, data_diario, foto) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $titulo, $conteudo, $humor, $tag, $data_diario, $foto]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -318,8 +340,8 @@ switch($acao) {
             $tag = $_POST['tag'] ?? '';
             $data_diario = $_POST['data_diario'] ?? date('Y-m-d');
             
-            $stmt = $pdo->prepare("UPDATE diarios SET titulo = ?, conteudo = ?, humor = ?, tag = ?, data_diario = ? WHERE id = ?");
-            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario, $id]);
+            $stmt = $pdo->prepare("UPDATE diarios SET titulo = ?, conteudo = ?, humor = ?, tag = ?, data_diario = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$titulo, $conteudo, $humor, $tag, $data_diario, $id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -331,8 +353,8 @@ switch($acao) {
         try {
             $id = $_POST['id'] ?? 0;
             
-            $stmt = $pdo->prepare("DELETE FROM diarios WHERE id = ?");
-            $stmt->execute([$id]);
+            $stmt = $pdo->prepare("DELETE FROM diarios WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $user_id]);
             
             echo json_encode(['success' => true]);
         } catch(PDOException $e) {
@@ -343,14 +365,16 @@ switch($acao) {
     // ========== ESTATÍSTICAS ==========
     case 'estatisticas_despesas':
         try {
-            $stmt = $pdo->query("
+            $stmt = $pdo->prepare("
                 SELECT 
                     categoria,
                     SUM(valor) as total,
                     COUNT(*) as quantidade
                 FROM despesas
+                WHERE user_id = ?
                 GROUP BY categoria
             ");
+            $stmt->execute([$user_id]);
             $estatisticas = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode($estatisticas);
         } catch(PDOException $e) {

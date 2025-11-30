@@ -3,6 +3,11 @@ let contaEditandoId = null;
 
 // Carregar dados ao iniciar
 document.addEventListener('DOMContentLoaded', function() {
+    // Verificar sessão primeiro (função em auth.js)
+    if (typeof verificarSessao === 'function') {
+        verificarSessao();
+    }
+    
     // Inicializar darkmode
     initDarkMode();
     
@@ -26,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setupImagePreview('fotoDiario', 'previewDiario');
     }
 });
+
+// ========== AUTENTICAÇÃO ==========
+// Funções movidas para auth.js - mantidas aqui para compatibilidade
 
 // ========== DARK MODE ==========
 

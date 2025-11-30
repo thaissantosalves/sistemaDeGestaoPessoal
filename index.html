@@ -14,9 +14,15 @@
     <header class="header">
         <div class="header-content">
             <h1 class="header-title"><i class="fas fa-chart-line"></i> Sistema de Gestão Pessoal</h1>
-            <button class="darkmode-toggle" id="darkmodeToggle" onclick="toggleDarkMode()">
-                <i class="fas" id="darkmodeIcon"></i>
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span id="userNome" style="color: #86868b; font-size: 14px;"></span>
+                <button class="darkmode-toggle" id="darkmodeToggle" onclick="toggleDarkMode()">
+                    <i class="fas" id="darkmodeIcon"></i>
+                </button>
+                <button class="btn-logout" onclick="fazerLogout()" style="background: #ff3b30; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </div>
         </div>
         <nav class="main-nav">
             <a href="index.html" class="nav-link active"><i class="fas fa-home"></i> Início</a>
@@ -196,6 +202,7 @@
         </div>
     </footer>
     
+    <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

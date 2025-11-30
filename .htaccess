@@ -1,16 +1,7 @@
-# Proteger arquivos sensíveis
+# Proteger arquivos sensíveis (Apache 2.4+)
 <FilesMatch "\.(sql|log|ini|conf)$">
-    Order allow,deny
-    Deny from all
+    Require all denied
 </FilesMatch>
-
-# Permitir acesso às imagens na pasta uploads
-<Directory "uploads">
-    Options -Indexes
-    AllowOverride None
-    Order allow,deny
-    Allow from all
-</Directory>
 
 # Configurações de upload
 php_value upload_max_filesize 10M
