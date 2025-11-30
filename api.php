@@ -2,10 +2,12 @@
 header('Content-Type: application/json');
 
 // Tente conectar ao banco
-try {
-    require_once 'config.php';
-} catch(Exception $e) {
-    echo json_encode(['error' => 'Erro de conexão com o banco de dados: ' . $e->getMessage()]);
+require_once 'config.php';
+
+// Verificar se a conexão foi estabelecida
+if ($pdo === null) {
+    $errorMsg = $pdo_error ?? 'Banco de dados não configurado. Por favor, importe o database.sql no MySQL.';
+    echo json_encode(['error' => 'Erro de conexão com o banco de dados: ' . $errorMsg]);
     exit;
 }
 
